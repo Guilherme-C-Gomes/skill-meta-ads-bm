@@ -1,0 +1,4 @@
+{"data":[
+ {"ad_id":"1001","ad_name":"Estatico | Triagem de caso | v1","spend":"1310.00","impressions":"70100","frequency":"1.60","inline_link_click_ctr":"1.05","actions":[{"action_type":"offsite_conversion.fb_pixel_lead","value":"16"}]},
+ {"ad_id":"1002","ad_name":"Video | Tempo de resposta | v2","spend":"900.00","impressions":"52000","frequency":"2.20","inline_link_click_ctr":"0.62","actions":[{"action_type":"offsite_conversion.fb_pixel_lead","value":"9"}]}
+]}
