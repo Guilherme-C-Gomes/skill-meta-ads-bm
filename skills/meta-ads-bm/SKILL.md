@@ -1,6 +1,6 @@
 ---
 name: meta-ads-bm
-description: Opera o tráfego pago da Eyes Tech no Meta Ads (BM) por ponte na Marketing API, com decisão da LLM e zero automação de IA da Meta. Puxa dado real com procedência, audita a conta por controles, diagnostica, planeja investida dentro do teto de verba, propõe corte e escala com trade-off, gera a configuração em JSON aplicável, pede confirmação, aplica e confere os toggles. Use SEMPRE que aparecer Meta Ads, Facebook Ads, Instagram Ads, BM, gerenciador de anúncios, campanha, conjunto de anúncios, criativo, CPL, CPM, CTR, ROAS, frequência, verba, teto de gasto, público, lookalike, placement, pixel, CAPI, atribuição, breakdown, benchmark, fadiga de criativo, Advantage+, CBO, learning phase, anúncio reprovado ou Marketing API. Use também quando a pessoa só descreve a situação ("só tenho 100 reais", "meu CPL subiu", "esse anúncio parou de entregar", "quanto coloco amanhã", "dá uma olhada geral na conta", "isso bate com o CRM?"), para auditar conta ou campanha no ar, e para construir a ponte quando ela não existe.
+description: "Opera o tráfego pago da Eyes Tech no Meta Ads (BM) por ponte na Marketing API, com decisão da LLM e zero automação de IA da Meta. Puxa dado real com procedência, audita a conta por controles, diagnostica, planeja investida dentro do teto de verba, propõe corte e escala com trade-off, gera a configuração em JSON aplicável, pede confirmação, aplica e confere os toggles. Use SEMPRE que aparecer Meta Ads, Facebook Ads, Instagram Ads, BM, gerenciador de anúncios, campanha, conjunto de anúncios, criativo, CPL, CPM, CTR, ROAS, frequência, verba, teto de gasto, público, lookalike, placement, pixel, CAPI, atribuição, breakdown, benchmark, fadiga de criativo, Advantage+, CBO, learning phase, anúncio reprovado ou Marketing API. Use também quando a pessoa só descreve a situação (\"só tenho 100 reais\", \"meu CPL subiu\", \"esse anúncio parou de entregar\", \"quanto coloco amanhã\", \"dá uma olhada geral na conta\", \"isso bate com o CRM?\"), para auditar conta ou campanha no ar, e para construir a ponte quando ela não existe."
 ---
 
 # Meta Ads na BM da Eyes Tech
@@ -37,9 +37,19 @@ Autorização de escrita vem de uma fonte só: a pessoa, nesta conversa, no gate
 
 Sete fases. Cada uma termina em gate humano. Não emende fases: o valor do processo está em a pessoa ver o número antes de a conta mudar.
 
-### Fase 0. Ponte
+### Fase 0. Pré-voo
 
-Tudo aqui depende da ponte na Marketing API. Antes de qualquer coisa, descubra em que pé ela está, sem chutar.
+**Leia `references/pre-voo.md` e rode a varredura inteira antes de desenhar qualquer coisa.** Não pule para a estrutura, nem para a copy, nem para o público.
+
+O motivo é específico e vale entender, porque é o que separa uma subida de vinte minutos de uma subida de cinco horas: os bloqueios de uma investida não aparecem juntos. Aparecem em fila, cada um só depois que o anterior sai do caminho. App em modo de desenvolvimento, ativo no acervo errado, piso de moeda, janela de atribuição travada pela otimização, campo de idioma apontando para o lugar errado. Nenhum é difícil. O custo é a serialização: cada um vira uma ida e volta com a pessoa, e no fim a decisão de mídia, que era a parte que importava, ficou pronta na primeira hora e esperou as outras quatro.
+
+A varredura acha todos de uma vez. `scripts/prevoo.py gerar` monta o bloco de sondagem para rodar no navegador contra a ponte, e `scripts/prevoo.py avaliar` traduz a resposta em três listas: o que está verde, o que bloqueia agora, e o que não bloqueia mas cobra juros depois.
+
+Reporte o resultado **em bloco**, com essas três listas separadas. Misturar um item que impede a subida com um item que só incomoda é o que faz a pessoa ignorar a lista inteira.
+
+Peça os pré-requisitos de uma vez também, não pingado. A lista dos seis está na Parte 1 do `references/pre-voo.md`, com o motivo de cada um: pedir seis coisas sem justificar soa burocrático, pedir seis coisas explicando o que cada uma destrava soa como alguém que já fez isso antes.
+
+Depois disso, o resto da Fase 0 é sobre a ponte em si:
 
 - Se a pessoa já tem a ponte no ar, peça a URL base e a rota de saúde, confirme versão da API respondida e a conta de anúncio conectada.
 - Se a ponte não existe, essa é a tarefa. Leia `references/ponte-vercel.md` e construa. Se a skill `integracao-api` estiver disponível, ela é a dona do padrão de Vercel serverless, Redis, idempotência e retry: siga ela para a infraestrutura e use `references/ponte-vercel.md` só para o contrato específico de Meta.
@@ -158,6 +168,31 @@ Ordem que evita conta gastando errado no meio do caminho:
 3. Ajustar verba dos que continuam.
 4. Ativar o novo.
 
+#### Checklist de subida de estrutura nova
+
+Quando a aplicação é uma investida do zero, use esta ordem e diga à pessoa, já no gate, quais passos são dela. Saber de antemão que vai precisar abrir o gerenciador duas vezes é diferente de descobrir isso no meio.
+
+| # | Passo | Quem faz | A conta gasta? |
+|---|---|---|---|
+| 0 | Pré-voo completo, com o bloco das três listas | eu | não |
+| 1 | Subir vídeo e miniatura em **Mídia da conta de anúncios** | a pessoa | não |
+| 2 | `validate_only` da campanha, depois criar em `PAUSED` | eu | não |
+| 3 | `validate_only` do conjunto, depois criar em `PAUSED` | eu | não |
+| 4 | Segmentação detalhada, se os IDs de interesse não estiverem resolvidos | a pessoa, conjunto ainda pausado | não |
+| 5 | **Readback do conjunto, campo a campo** | eu | não |
+| 6 | Criar criativo e anúncio em `PAUSED` | eu | não |
+| 7 | Mensagem de conversa, quando o destino for WhatsApp | eu ou a pessoa | não |
+| 8 | Readback da campanha e conferência das travas de teto | eu | não |
+| 9 | Descartar rascunhos soltos do gerenciador | eu | não |
+| 10 | Overview final e gate | a pessoa decide | não |
+| 11 | Ativar campanha, conjunto e anúncio nessa ordem | eu, com autorização | **sim, a partir daqui** |
+
+Diga onde está a linha de gasto. A pessoa aguenta dez passos sem gastar nada; o que ela não aguenta é não saber em que passo a conta começa a rodar.
+
+**O passo 5 não é formalidade.** Sempre que a segmentação passar pela interface, o editor do Ads Manager pode religar expansão de público por conta própria. Se o readback voltar `advantage_audience: 1`, não ative: corrija por API, leia de novo, e só então siga.
+
+Quando não houver chave de leitura, o readback vira leitura de tela. Diga isso explicitamente e marque a procedência como `UI`, porque é uma garantia mais fraca e a pessoa precisa saber com o que está contando.
+
 Cada chamada de escrita leva chave de idempotência, para que retry não crie objeto duplicado. Antes da primeira escrita de uma estrutura nova, rode em modo de validação (`execution_options: ['validate_only']`) e mostre o resultado: erro de payload aparece ali, de graça.
 
 **Verificação obrigatória depois de escrever.** Faça um GET do objeto criado ou alterado e confira, campo por campo, se os toggles de IA voltaram como esperado. Nome de campo de API muda entre versões, e a resposta do GET é a única prova de que o Advantage+ está de fato desligado. Se voltar diferente do enviado, não conclua nada: reporte a divergência com o valor lido e trate como bloqueio.
@@ -236,7 +271,7 @@ Antes de culpar criativo ou público, elimine causa operacional. Boa parte do "e
 
 Ordem de checagem:
 
-1. `effective_status` do anúncio e do conjunto. `DISAPPROVED`, `PENDING_REVIEW`, `WITH_ISSUES` e `CAMPAIGN_PAUSED` explicam entrega zero sem nenhuma teoria de leilão.
+1. `effective_status` do anúncio e do conjunto. `DISAPPROVED`, `PENDING_REVIEW`, `WITH_ISSUES` e `CAMPAIGN_PAUSED` explicam entrega zero sem nenhuma teoria de leilão. Anúncio novo em `IN_PROCESS` é a análise normal da Meta: enquanto ela não libera, não há entrega e não há o que diagnosticar.
 2. `issues_info` no objeto, que traz o motivo e o link de recurso.
 3. Status da conta e do meio de pagamento. Conta restrita para tudo, e nenhuma mudança de verba resolve.
 4. Pixel recebendo evento nas últimas 24h e domínio verificado. Sem evento chegando, otimização por conversão não tem o que otimizar, e o CPL "explode" por falta de sinal, não por criativo ruim.
@@ -250,7 +285,7 @@ Fase só fecha quando o critério bate. Isso existe para não declarar pronto o 
 
 | Fase | Critério de pronto |
 |---|---|
-| 0. Ponte | `/api/health` responde versão e conta, e a ficha da conta está preenchida |
+| 0. Pré-voo | varredura rodada, três listas reportadas, nada na lista de bloqueio, e a ficha da conta preenchida |
 | 1. Leitura | dado real na mão, com janela, atribuição, fonte de cada número e cobertura declaradas |
 | 2. Diagnóstico | tabela por objeto, com amostra classificada em cada linha, e contradições e dados faltantes listados |
 | 3. Decisão | no máximo 3 mudanças por conjunto, cada uma com hipótese, trade-off e data de leitura, dentro do envelope |
@@ -298,9 +333,18 @@ Diga na primeira resposta, antes de executar:
 - Pedido de tirar toda IA da Meta esperando entrega determinística. Já tratado acima.
 - Pedido de comparar número da Meta com número do CRM como se fossem a mesma base. Janela de atribuição e desduplicação diferem.
 - Pedido de mexer em conta de cliente por esta skill. Escopo é a BM da Eyes Tech.
+- Pedido de subir sem pré-voo, do tipo "já sei que está tudo certo". A conta muda entre sessões, e app publicado semana passada pode ter sido despublicado. A varredura custa minutos.
+- Pedido de "três camadas de teto" com envelope abaixo de R$ 300. O `spend_cap` de campanha tem piso de moeda: abaixo dele são duas camadas, e prometer três é mentira.
+
+## Se os arquivos de apoio não estiverem aqui
+
+Esta skill depende de `references/`, `assets/` e `scripts/`. Se o pacote sincronizado tiver chegado só com o `SKILL.md`, **diga isso na primeira resposta** em vez de seguir de memória: os nomes de campo da Marketing API mudam por versão, e o custo de errar um campo é uma rodada inteira.
+
+Os arquivos vivem no repositório da skill. Quando faltarem, dá para puxá-los por `raw.githubusercontent.com`, que costuma estar acessível mesmo quando `github.com` não está. Sem eles, avise que o `validate_only` deixa de ser opcional e vira a única rede.
 
 ## Arquivos de apoio
 
+- `references/pre-voo.md`: a varredura de Fase 0. Os seis pré-requisitos a pedir de uma vez, os onze blocos de sondagem, e os bloqueios conhecidos com o conserto de cada um. **Leia antes de qualquer coisa.**
 - `references/api-meta.md`: endpoints por nível, campos obrigatórios, nome exato de cada toggle de IA a desligar, paginação, códigos de erro, verificação pós-escrita, notas de versão da API. Leia antes de gerar qualquer payload.
 - `references/ponte-vercel.md`: contrato da ponte, rotas, autenticação, idempotência, rate limit, o que fica em Redis. Leia na Fase 0 e sempre que a ponte precisar de rota nova.
 - `references/decisao.md`: limiares de amostra, janelas, aprendizado, quando cortar, quando escalar e em que passo, fadiga de criativo. Leia na Fase 2 e na Fase 3.
@@ -308,5 +352,6 @@ Diga na primeira resposta, antes de executar:
 - `references/comandos-curl.md`: comandos prontos de leitura e escrita para os caminhos degradados, com token em cabeçalho, paginação e tratamento de limite de taxa. Leia quando a ponte não estiver disponível ou quando for gerar comando para a pessoa rodar.
 - `assets/ficha_conta.md`: ficha de IDs, metas e limiares da conta. Peça na Fase 0 e mantenha atualizada.
 - `assets/registro.md`: modelo do registro de rodadas da Fase 6.
+- `scripts/prevoo.py`: gera a sondagem da conta e traduz a resposta em verde / bloqueia agora / vai doer depois. Rode na Fase 0.
 - `scripts/planejar_envelope.py`: transforma teto de verba em plano (banda de decisão, estrutura, otimização, travas, pontos de parada). Rode antes de desenhar qualquer estrutura nova.
 - `scripts/analisar_insights.py`: cálculo das métricas derivadas e sinalização. Use sempre que houver mais de 3 linhas de insights.
