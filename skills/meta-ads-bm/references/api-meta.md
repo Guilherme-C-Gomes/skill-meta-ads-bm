@@ -83,7 +83,19 @@ Rode este checklist na criação e no readback. Um item por linha, com o valor q
 | Campanha Advantage+ pronta | campanha | tipo de campanha | criar campanha manual, não Advantage+ |
 | Recomendações automáticas do gerenciador | interface | nenhum | ignorar; não aplicar sugestão da interface |
 
-Features de criativo que aparecem em `creative_features_spec` e devem sair todas com `OPT_OUT`: `standard_enhancements`, `image_touchups`, `image_brightness_and_contrast`, `text_optimizations`, `image_templates`, `media_type_automation`, `product_extensions`, `description_automation`, `adapt_to_placement`, `catalog_feed_tags`, `site_extensions`. A lista cresce a cada versão: no readback, se voltar feature que não está aqui com `enroll_status` diferente de `OPT_OUT`, reporte como pendência e adicione a esta tabela.
+Features aceitas em `creative_features_spec`, todas com `OPT_OUT`: `IG_VIDEO_NATIVE_SUBTITLE`, `IMAGE_ANIMATION`, `PRODUCT_BROWSING`, `PRODUCT_METADATA_AUTOMATION`, `PROFILE_CARD`, `STANDARD_ENHANCEMENTS_CATALOG`, `TEXT_OVERLAY_TRANSLATION`.
+
+Os nomes em caixa baixa de versões anteriores (`standard_enhancements`, `image_touchups`, `video_auto_crop`, `music`, `adapt_to_placement` e companhia) **foram removidos na v26.0** e agora derrubam a chamada inteira com `#100`, não são ignorados em silêncio. Quando a Meta recusa uma chave, ela devolve o conjunto válido dentro da própria mensagem de erro:
+
+```
+(#100) Param key 'music' in degrees_of_freedom_spec[creative_features_spec] must be one of
+{IG_VIDEO_NATIVE_SUBTITLE, IMAGE_ANIMATION, PRODUCT_BROWSING, PRODUCT_METADATA_AUTOMATION,
+ PROFILE_CARD, STANDARD_ENHANCEMENTS_CATALOG, TEXT_OVERLAY_TRANSLATION} - got "music".
+```
+
+Use esse conjunto e atualize aqui. Para vídeo, as duas que mais importam são `IG_VIDEO_NATIVE_SUBTITLE`, que queima legenda automática por cima de peça que já tem legenda, e `TEXT_OVERLAY_TRANSLATION`.
+
+No readback a Meta **expande** a lista sozinha: um criativo volta com dezenas de features que você não enviou, todas herdando o estado do que foi declarado. Confira programaticamente que nenhuma voltou fora de `OPT_OUT`, em vez de ler no olho.
 
 Bloco reutilizável para o conjunto:
 
@@ -156,11 +168,13 @@ POST /v26.0/act_{AD_ACCOUNT_ID}/adsets
   },
   "is_dynamic_creative": false,
   "attribution_spec": [
-    { "event_type": "CLICK_THROUGH", "window_days": 7 }
+    { "event_type": "CLICK_THROUGH", "window_days": 1 }
   ],
   "targeting": { "...bloco da seção 3..." }
 }
 ```
+
+**A janela de atribuição não é livre: ela é restringida pelo `optimization_goal`.** Com `CONVERSATIONS`, a Meta aceita só `window_days: 1` e recusa o resto com `error_subcode 1885423`. Não copie 7d click de outra campanha. Quando comparar com histórico, diga qual janela cada número usou, porque 1d click e 7d click não são a mesma base.
 
 Pontos de atenção:
 - Verba em centavos. `8000` é R$ 80,00. Erro de duas ordens de grandeza aqui é o erro mais caro possível: confira antes de enviar e mostre o valor em reais no gate.
@@ -178,6 +192,7 @@ POST /v26.0/act_{AD_ACCOUNT_ID}/adcreatives
   "name": "Criativo | Estatico | Triagem de caso | v1",
   "object_story_spec": {
     "page_id": "{PAGE_ID}",
+    "instagram_user_id": "{IG_USER_ID}",
     "link_data": {
       "image_hash": "{IMAGE_HASH}",
       "link": "https://exemplo.com.br/lp?utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{ad.name}}",
@@ -208,6 +223,10 @@ UTM sempre preenchida, com `utm_content` no nível do anúncio. Sem isso o rastr
 
 Imagem entra por upload prévio (`POST /adimages`) e vídeo por `POST /advideos`; use o `hash` ou `video_id` retornado.
 
+**Miniatura de vídeo é obrigatória.** `video_data` exige `image_hash` ou `image_url`; sem um dos dois vem `error_subcode 1443226`, "Seu anúncio precisa de uma miniatura de vídeo". A Meta gera miniaturas automáticas no upload, mas costumam cair em quadro de transição escuro.
+
+**Quando o ativo sobe pela interface, existem dois acervos e só um serve para anúncio.** "Mídia da empresa" (`/asset_library/business_creatives`) guarda ativo de portfólio e devolve um ID que não é `video_id` nem `image_hash`: usá-lo dá `Param video_id is not a valid video_id ID` ou "Imagem não encontrada", e a mensagem não menciona acervo nenhum, então a pessoa procura no lugar errado. O acervo certo é "Mídia da conta de anúncios" (`/asset_library/ad_accounts`), com a conta correta no seletor do topo. O `video_id` sai do botão "Copiar identificação do vídeo"; o `image_hash` é o campo "Hash", com 32 caracteres hexadecimais. **ID numérico de 16 dígitos nunca é hash.**
+
 ## 7. Teto de gasto: lifetime_budget, spend_cap e mínimo diário
 
 Verba diária não é teto. A entrega pode passar do valor do dia e compensar ao longo da semana, então quem precisa garantir "no máximo R$ 100" usa orçamento total com data de fim, não diária.
@@ -216,10 +235,12 @@ Mínimo diário da conta, antes de definir qualquer verba:
 
 ```
 GET /v26.0/act_{AD_ACCOUNT_ID}
-  ?fields=currency,timezone_name,min_daily_budget_low_freq,min_daily_budget_high_freq,spend_cap,amount_spent,balance
+  ?fields=currency,timezone_name,min_daily_budget,spend_cap,amount_spent,balance
 ```
 
-Os mínimos vêm na unidade menor da moeda e variam por tipo de cobrança. Não chute: leia da conta. Diária abaixo do mínimo não entrega, e o sintoma é entrega zero sem nenhuma reprovação, o que faz perder tempo procurando problema de criativo.
+O campo é `min_daily_budget`. Os antigos `min_daily_budget_low_freq` e `min_daily_budget_high_freq` **não existem mais** e dão `#100 Tried accessing nonexisting field`.
+
+O mínimo vem na unidade menor da moeda. Não chute: leia da conta. Diária abaixo do mínimo não entrega, e o sintoma é entrega zero sem nenhuma reprovação, o que faz perder tempo procurando problema de criativo.
 
 Conjunto com orçamento total e janela fechada:
 
@@ -247,6 +268,15 @@ Segunda barreira, na campanha:
 POST /v26.0/{CAMPAIGN_ID}
 { "spend_cap": 10000 }
 ```
+
+**O `spend_cap` de campanha tem piso por moeda, e em BRL é R$ 300,00 (`30000`).** Envelope abaixo disso não consegue usar essa camada:
+
+```
+error_subcode 2446307
+"O limite de gastos da campanha precisa ser pelo menos R$300,00 para essa moeda."
+```
+
+A recusa vem já no `validate_only`. A resposta certa é **remover o campo e seguir**, nunca inflar o teto para caber: o teto acordado é o acordo, não o que a plataforma aceita. Sobram `lifetime_budget` com `end_time` e o readback. Diga isso no gate, porque o desenho passa de três camadas para duas e a pessoa merece saber em quantas travas está confiando.
 
 Terceira camada, na conta inteira, com efeito colateral que precisa ser dito antes de propor:
 
@@ -365,6 +395,8 @@ Limite de taxa: a conta tem cota por janela e a ponte responde 429 quando estour
 | Objeto criado mas não entrega | ficou `PAUSED`, ou anúncio em revisão | conferir `effective_status` |
 | CPL "zerado" no insights | evento de conversão diferente do consultado | listar `actions` cru e achar o `action_type` real |
 | Público muito maior que o definido | `advantage_audience` voltou 1 | readback e correção antes de ativar |
+| Criativo recusado sem falar de criativo | app da ponte em modo de desenvolvimento | publicar o app antes; ver bloco abaixo |
+| `locales` aceito mas entrega quase zero | ID de idioma errado (`6` é inglês dos EUA) | em país único, não envie `locales` |
 | Campo rejeitado | mudou de nome na versão | conferir changelog e ajustar a ponte |
 | Duas campanhas iguais | retry sem idempotência | pausar a duplicada, corrigir a chave na ponte |
 | `reach` vazio | métrica em retirada | usar impressões e frequência |
@@ -374,3 +406,45 @@ Limite de taxa: a conta tem cota por janela e a ponte responde 429 quando estour
 | Erro 100 com campo válido "ontem" | nome de campo mudou na versão | conferir changelog e ajustar a ponte |
 
 Códigos de erro completos e os comandos executáveis correspondentes estão em `references/comandos-curl.md`, que também cobre o caminho degradado quando a ponte não está disponível.
+
+
+## App em modo de desenvolvimento bloqueia criativo
+
+Criar `adcreative` gera um post na Página, e a Meta recusa post feito por app em modo de desenvolvimento:
+
+```
+error_subcode 1885183
+"O post do criativo dos anúncios foi criado por um app que está em modo de desenvolvimento.
+ Ele deve estar em modo público para criar este anúncio."
+```
+
+Esse é o bloqueio mais caro do fluxo, porque só aparece na hora de criar o criativo, quando campanha, conjunto, público e copy já estão prontos. **Cheque o modo do app na Fase 0**, não aqui.
+
+Publicar o app exige, em Configurações > Básico: **URL de política de privacidade** e **categoria**. Em cliente sem site isso vira bloqueio de projeto, não de execução. A política não precisa morar junto do produto, só precisa de URL pública: GitHub Pages num repo do time resolve sem tocar em nada que esteja no ar.
+
+Cuidado com o atalho inverso: apontar um projeto Vercel existente para um repositório vazio só para ganhar hospedagem **substitui a ponte no ar pelo conteúdo do repo** no primeiro deploy.
+
+## Campos que a API aceita sem reclamar e mesmo assim estão errados
+
+Esta é a classe de erro mais perigosa, porque não gera exceção nenhuma.
+
+| Campo | Armadilha |
+|---|---|
+| `locales` | `6` é inglês dos EUA, não português. Conjunto criado assim mira brasileiro que usa Facebook em inglês e quase não entrega. Em campanha de país único, o normal é **não enviar** o campo: idioma só serve para limitar a um idioma incomum na localização |
+| `instagram_user_id` | nome da v26.0; substituiu `instagram_actor_id`. Se faltar, o anúncio roda só com a identidade da Página |
+| `flexible_spec` por cargo em português | cargos são **separados por gênero**: "Advogado - Sócio Proprietário" e "Advogada - Sócia Proprietária" são nós diferentes. Usar só a forma masculina deixa metade do ICP fora |
+
+Regra que esses casos ensinam: campo que você não confirmou no readback é dívida silenciosa. Prefira não enviar a enviar um ID que não conferiu.
+
+## Guardas que a ponte impõe e a API não
+
+A ponte recusa antes de chamar a Meta, o que é mais barato que descobrir pelo erro dela:
+
+| Nível | Campo | Exigência |
+|---|---|---|
+| campanha | `is_adset_budget_sharing_enabled` | `false` explícito |
+| conjunto | `is_dynamic_creative` | `false` explícito |
+| conjunto | `targeting.targeting_automation.advantage_audience` | `0` explícito |
+| qualquer | `Idempotency-Key` | cabeçalho obrigatório, mínimo 8 caracteres |
+
+São obrigatórios explícitos, não opcionais com default seguro. Repetir a mesma chave de idempotência devolve o mesmo ID em vez de criar objeto duplicado, e isso é a rede que salva um retry distraído.
